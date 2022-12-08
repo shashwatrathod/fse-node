@@ -85,10 +85,23 @@ export default class DislikeController implements IDislikeController {
    * @param {Response} res Represents response to client, including the
    * body formatted as JSON arrays containing the tuit objects that were disliked
    */
-  findAllTuitsDislikedByUser = (req: Request, res: Response) =>
+  findAllTuitsDislikedByUser = (req: Request, res: Response) => {
+    const uid = req.params.uid;
+    const profile = (req.session as Session).profile;
+    const userId = uid === "me" && profile ? profile._id : uid;
+
+    if (userId === "me") res.sendStatus(403);
+
     DislikeController.dislikeDao
-      .findAllTuitsDislikedByUser(req.params.uid)
-      .then((dislikes) => res.json(dislikes));
+      .findAllTuitsDislikedByUser(userId)
+      .then((dislikes) => {
+        const dislikesNonNullTuits = dislikes.filter((dislike) => dislike.tuit);
+        const tuitsFromDislikes = dislikesNonNullTuits.map(
+          (dislike) => dislike.tuit
+        );
+        res.json(tuitsFromDislikes);
+      });
+  };
 
   /**
    * @param {Request} req Represents request from client, including the
@@ -103,6 +116,8 @@ export default class DislikeController implements IDislikeController {
     const tid = req.params.tid;
     const { profile } = req.session as Session;
     const userId = uid === "me" && profile ? profile._id : uid;
+
+    if (userId === "me") res.sendStatus(403);
 
     try {
       const userAlreadyDislikedTuit =
@@ -163,7 +178,8 @@ export default class DislikeController implements IDislikeController {
         ? (req.session as Session).profile._id
         : req.params.uid;
 
-      console.log("here")
+    if (userId === "me") res.sendStatus(403);
+
     DislikeController.dislikeDao
       .findUserDislikesTuit(req.params.tid, userId)
       .then((response) => res.send(response))
